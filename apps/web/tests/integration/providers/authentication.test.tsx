@@ -76,6 +76,32 @@ describe("Formulários, hooks e cache de sessão", () => {
     expect(loginAction).not.toHaveBeenCalled();
     expect(boundary.ensureReady).not.toHaveBeenCalled();
   });
+  it("cadastro mostra e limpa a validação do nome enquanto digita", async () => {
+    renderWithCache(<RegisterPage />);
+    const name = screen.getByLabelText("Nome");
+    await userEvent.type(name, "ab");
+    expect(await screen.findByText("O nome deve ter pelo menos 3 caracteres")).toBeInTheDocument();
+    await userEvent.type(name, "c");
+    await waitFor(() => expect(screen.queryByText("O nome deve ter pelo menos 3 caracteres")).not.toBeInTheDocument());
+    expect(name).toHaveValue("abc");
+    expect(createUserAction).not.toHaveBeenCalled();
+  });
+  it("cadastro valida nome ao sair do campo antes de enviar", async () => {
+    renderWithCache(<RegisterPage />);
+    await userEvent.type(screen.getByLabelText("Nome"), "ab");
+    await userEvent.tab();
+    expect(await screen.findByText("O nome deve ter pelo menos 3 caracteres")).toBeInTheDocument();
+    expect(createUserAction).not.toHaveBeenCalled();
+  });
+  it("falha inesperada no cadastro não exibe mensagem técnica do Next", async () => {
+    vi.mocked(createUserAction).mockRejectedValue(new Error("An error occurred in the Server Components render. digest secreto"));
+    renderWithCache(<RegisterPage />);
+    await userEvent.type(screen.getByLabelText("Nome"), "Pessoa");
+    await fillLogin();
+    await userEvent.type(screen.getByLabelText("Confirme sua senha"), "password123");
+    await userEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Não foi possível criar sua conta agora. Tente novamente.");
+  });
   it("login bem-sucedido limpa o cache antes da navegação", async () => {
     const { client } = renderWithCache(<LoginPage />);
     await fillLogin();
@@ -115,15 +141,14 @@ describe("Formulários, hooks e cache de sessão", () => {
         "Usuário ou senha inválidos",
       ),
     );
+    expect(screen.getByRole("alert")).toHaveTextContent("Usuário ou senha inválidos");
+    expect(screen.getByLabelText("Senha", { exact: true })).toHaveValue("password123");
     expect(screen.getByRole("button", { name: "Entrar" })).toBeEnabled();
     expect(boundary.push).not.toHaveBeenCalled();
   });
   it("cadastro não envia confirmação de senha e navega somente após sucesso", async () => {
     vi.mocked(createUserAction).mockResolvedValue({
-      id: "user",
-      name: "Pessoa",
-      email: "user@example.test",
-      createdAt: new Date("2026-10-15"),
+      ok: true,
     });
     renderWithCache(<RegisterPage />);
     await userEvent.type(screen.getByLabelText("Nome"), "Pessoa");
@@ -140,6 +165,18 @@ describe("Formulários, hooks e cache de sessão", () => {
       password: "password123",
     });
   });
+  it("cadastro posiciona validação da action junto ao campo e mantém os dados", async () => {
+    vi.mocked(createUserAction).mockResolvedValue({ ok: false, message: "Confira os campos indicados para criar sua conta.", fieldErrors: { name: "Confira o nome informado." } });
+    renderWithCache(<RegisterPage />);
+    await userEvent.type(screen.getByLabelText("Nome"), "Pessoa");
+    await fillLogin();
+    await userEvent.type(screen.getByLabelText("Confirme sua senha"), "password123");
+    await userEvent.click(screen.getByRole("button", { name: "Criar conta" }));
+    expect(await screen.findByText("Confira o nome informado.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nome")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByLabelText("Nome")).toHaveValue("Pessoa");
+    expect(boundary.push).not.toHaveBeenCalled();
+  });
   it("cadastro bloqueia novo envio enquanto aguarda a criação da conta", async () => {
     vi.mocked(createUserAction).mockReturnValue(new Promise(() => {}));
     renderWithCache(<RegisterPage />);
@@ -155,9 +192,7 @@ describe("Formulários, hooks e cache de sessão", () => {
     expect(createUserAction).toHaveBeenCalledTimes(1);
   });
   it("cadastro exibe a rejeição da API para que o usuário possa corrigir", async () => {
-    vi.mocked(createUserAction).mockRejectedValue(
-      new Error("E-mail já cadastrado"),
-    );
+    vi.mocked(createUserAction).mockResolvedValue({ ok: false, message: "E-mail já cadastrado" });
     renderWithCache(<RegisterPage />);
     await userEvent.type(screen.getByLabelText("Nome"), "Pessoa");
     await fillLogin();

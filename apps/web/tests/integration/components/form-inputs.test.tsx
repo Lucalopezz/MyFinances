@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -58,4 +59,29 @@ describe("Rótulos e mensagens dos formulários públicos", () => {
       screen.getByLabelText("Confirme sua senha").id,
     );
   });
+});
+
+/** O reset verifica que o valor exibido vem do estado, inclusive após edição. */
+function ControlledFields() {
+  const [name, setName] = useState("Pessoa");
+  const [password, setPassword] = useState("senha123");
+  return <>
+    <FormInput label="Nome controlado" value={name} onChange={(event) => setName(event.target.value)} />
+    <PasswordInput label="Senha controlada" value={password} onChange={(event) => setPassword(event.target.value)} />
+    <button onClick={() => { setName(""); setPassword(""); }}>Limpar campos</button>
+  </>;
+}
+it("campos aceitam valor controlado, edição e reset pelo estado", async () => {
+  render(<ControlledFields />);
+  const name = screen.getByLabelText("Nome controlado");
+  const password = screen.getByLabelText("Senha controlada");
+  expect(name).toHaveValue("Pessoa");
+  expect(password).toHaveValue("senha123");
+  await userEvent.type(name, " Silva");
+  await userEvent.type(password, "4");
+  expect(name).toHaveValue("Pessoa Silva");
+  expect(password).toHaveValue("senha1234");
+  await userEvent.click(screen.getByRole("button", { name: "Limpar campos" }));
+  expect(name).toHaveValue("");
+  expect(password).toHaveValue("");
 });

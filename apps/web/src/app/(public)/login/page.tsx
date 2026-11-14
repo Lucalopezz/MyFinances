@@ -7,7 +7,6 @@ import { FormInput } from "@/components/form/form-input";
 import { PasswordInput } from "@/components/form/password-input";
 import { Button } from "@/components/ui/button";
 import { useLogin } from "@/hooks/queries/useLogin";
-import { LoadingState } from "@/components/loading-state";
 
 export default function LoginPage() {
   const {
@@ -16,10 +15,9 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(LoginSchema),
+    mode: "onTouched",
   });
-  const { handleLogin, loading } = useLogin();
-
-  if (loading) return <LoadingState />;
+  const { handleLogin, loading, error } = useLogin();
 
   return (
     <div className="flex w-full flex-1 items-center justify-center">
@@ -27,7 +25,7 @@ export default function LoginPage() {
         <h2 className="mb-6 text-2xl font-bold text-[#1F2937] dark:text-white">
           Login
         </h2>
-        <form onSubmit={handleSubmit(handleLogin)} className="space-y-4">
+        <form noValidate onSubmit={handleSubmit(handleLogin)} className="space-y-4">
           <FormInput
             label="E-mail"
             type="email"
@@ -41,10 +39,17 @@ export default function LoginPage() {
           />
           <Button
             type="submit"
+            disabled={loading}
             className="w-full bg-[#10B981] hover:bg-[#059669] text-white"
           >
-            Entrar
+            {loading ? "Entrando…" : "Entrar"}
           </Button>
+          {/* O alerta permanece após a falha; toast sozinho desaparece rápido. */}
+          {error && (
+            <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+              {error}
+            </p>
+          )}
         </form>
         <p className="mt-4 text-sm text-[#6B7280] dark:text-gray-400">
           Não tem conta?{" "}

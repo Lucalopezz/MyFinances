@@ -145,3 +145,44 @@ Isso evita expor o JWT no JavaScript do browser.
 ## Isolamento do cache entre contas
 
 Login bem-sucedido e encerramento de sessão cancelam consultas pendentes e limpam o QueryClient antes da navegação. Isso impede que categorias, regras e outros dados financeiros em memória de uma conta sejam reutilizados pela próxima sessão no mesmo navegador. JWT continua exclusivamente no cookie HTTP-only.
+
+## Validação e feedback no cadastro e login
+
+Cadastro valida nome com 3 a 50 caracteres, e-mail válido, senha com 8 a 128
+caracteres e confirmação igual à senha. Login valida e-mail e os mesmos limites
+de senha. Nome e e-mail recebem `trim`; a senha é preservada exatamente como foi
+digitada. O cadastro usa campos controlados por `Controller` do React Hook Form,
+com valores iniciais vazios (`defaultValues`) e `zodResolver(RegisterSchema)`.
+Cada input recebe `value`, `onChange`, `onBlur` e `ref` do Controller; o React
+Hook Form é a única fonte dos valores. No cadastro, `mode: "onChange"` valida
+durante a digitação; no login, `mode: "onTouched"` valida ao sair do campo e
+durante a correção. Ambos bloqueiam o envio inválido. `noValidate` deixa as mensagens em português
+sob controle do formulário, em vez de usar os avisos nativos do navegador.
+
+As Server Actions validam novamente: validação no navegador melhora a experiência,
+mas não é uma barreira de segurança. A API continua responsável por validar os
+dados e as regras de negócio, incluindo a unicidade do e-mail.
+
+`createUserAction` retorna `{ ok: true }` ou
+`{ ok: false, message, fieldErrors? }`. `fieldErrors` usa os campos `name`, `email`
+e `password`, com uma mensagem por campo. Confirmação de senha e dados da conta
+criada não são enviados de volta ao navegador. O hook só navega para `/login`
+quando `ok` é verdadeiro; rejeições mantêm os campos e exibem um alerta persistente.
+O login também preserva o formulário enquanto aguarda e depois de uma falha.
+
+Um `401` de `POST /auth` significa credenciais inválidas, sem revelar se o e-mail
+existe. Ele não deve ser descrito como sessão expirada. Nas operações privadas,
+`401` continua significando sessão ausente ou expirada. Falhas de rede, resposta
+inválida, indisponibilidade e `5xx` recebem orientação segura para tentar novamente.
+O cookie só é gravado quando a resposta de login contém um token não vazio.
+
+O erro relatado nas issues #20 e #21 ocorria porque o cadastro lançava a falha
+pública pela fronteira da Server Action. Em produção, o Next.js oculta mensagens
+de exceções do servidor e devolve o aviso técnico sobre Server Components/digest.
+Isso também escondia rejeições esperadas, como nome inválido ou e-mail já usado.
+O formulário antes aceitava nomes de um caractere, embora a API exigisse três,
+e não verificava o limite máximo da senha. Essas divergências foram corrigidas;
+sem o status/log da tentativa original, não é possível afirmar qual delas causou
+a falha daquele cadastro.
+
+Consulte também a [política de mensagens públicas](error-feedback.md).

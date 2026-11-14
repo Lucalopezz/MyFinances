@@ -15,6 +15,8 @@ import {
 } from "@/lib/backend";
 import { createApiError, createRequestError } from "@/lib/api-error";
 
+import { LoginSchema } from "@/schemas/auth/login.schema";
+
 type LoginPayload =
   | FormData
   | {
@@ -36,9 +38,14 @@ function getLoginField(payload: LoginPayload, field: "email" | "password") {
   return String(payload[field] ?? "");
 }
 
+/** Valida credenciais e cria o cookie apenas após confirmação da API. */
 export async function loginAction(payload: LoginPayload): Promise<LoginResult> {
-  const email = getLoginField(payload, "email");
-  const password = getLoginField(payload, "password");
+  const parsed = LoginSchema.safeParse({
+    email: getLoginField(payload, "email"),
+    password: getLoginField(payload, "password"),
+  });
+  if (!parsed.success) return { ok: false, message: parsed.error.issues[0].message };
+  const { email, password } = parsed.data;
 
   let response: Response;
   try {
@@ -59,6 +66,8 @@ export async function loginAction(payload: LoginPayload): Promise<LoginResult> {
   if (!response.ok) {
     const publicError = await createApiError(response, {
       context: "POST /auth",
+      // No login ainda não existe sessão: 401 significa credenciais rejeitadas.
+      unauthorizedMessage: "E-mail ou senha inválidos. Confira os dados e tente novamente.",
       fallback:
         response.status >= 500
           ? "Não foi possível entrar agora. Tente novamente."
@@ -67,21 +76,31 @@ export async function loginAction(payload: LoginPayload): Promise<LoginResult> {
     return { ok: false, message: publicError.message };
   }
 
-  const data = await response.json();
+  try {
+    const data: unknown = await response.json();
+    if (
+      !data || typeof data !== "object" || !("accessToken" in data) ||
+      typeof data.accessToken !== "string" || !data.accessToken.trim()
+    ) {
+      return { ok: false, message: "Não foi possível entrar agora. Tente novamente." };
+    }
 
-  if (!data?.accessToken) {
-    console.error("[API] POST /auth returned a response without accessToken");
-    return { ok: false, message: "Não foi possível entrar agora. Tente novamente." };
+    (await cookies()).set({
+      name: AUTH_COOKIE_NAME,
+      value: data.accessToken,
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+    });
+    return { ok: true };
+  } catch (error) {
+    // JSON inválido e falha ao gravar cookie também não devem atravessar a
+    // fronteira da action como exceções que o Next substitui por um digest.
+    const publicError = createRequestError(error, {
+      context: "POST /auth response",
+      fallback: "Não foi possível entrar agora. Tente novamente.",
+    });
+    return { ok: false, message: publicError.message };
   }
-
-  (await cookies()).set({
-    name: AUTH_COOKIE_NAME,
-    value: data.accessToken,
-    httpOnly: true,
-    path: "/",
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-  });
-
-  return { ok: true };
 }

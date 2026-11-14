@@ -38,3 +38,6 @@ Estes documentos preservam o contexto e as evidências das rodadas anteriores. C
 - [Validação de categorias e regras](delivery-a-validation.md).
 - [Validação de importação CSV/OFX](delivery-b-validation.md).
 - [Validação de calendário financeiro](delivery-c-validation.md).
+
+- [Mensagens públicas e validação](error-feedback.md): política de feedback, privacidade e resultados de Server Actions.
+- [Revisão de validação e feedback](feedback-audit.md): achados pendentes nos demais formulários e interações, com limites da verificação.
