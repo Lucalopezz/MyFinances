@@ -29,14 +29,14 @@ export async function createUser(data: {
     if (!response.ok)
       throw await createApiError(response, {
         context: "POST /user",
-        fallback: "Não foi possível criar sua conta.",
+        fallback: "Não foi possível criar sua conta agora. Tente novamente.",
       });
 
     return await response.json();
   } catch (error) {
     throw createRequestError(error, {
       context: "POST /user",
-      fallback: "Não foi possível criar sua conta.",
+      fallback: "Não foi possível criar sua conta agora. Tente novamente.",
     });
   }
 }

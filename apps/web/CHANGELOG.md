@@ -4,6 +4,11 @@ Este arquivo concentra as mudanças por release. O [escopo atual](docs/features.
 
 ## Não lançado
 
+- Formulário de cadastro controlado pelo React Hook Form/Controller, com valores iniciais definidos e validação Zod a cada alteração.
+
+- Cadastro e login com validação alinhada à API, feedback por campo antes do envio e alertas persistentes; cadastro retorna erros como dados para evitar o aviso técnico de Server Components em produção.
+- Falhas de login distinguem credenciais inválidas de indisponibilidade, sem expor detalhes internos. Política de mensagens públicas documentada.
+
 - Wishlist com cartões de saldo, metas e estado vazio alinhados ao tema do app, filtros acessíveis e formulário responsivo nos temas claro e escuro.
 - Consulta de notificações usa um único GET autenticado, com geração na API e sem depender de um POST prévio.
 

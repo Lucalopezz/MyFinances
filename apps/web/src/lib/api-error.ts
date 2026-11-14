@@ -3,6 +3,7 @@ import "server-only";
 type ApiErrorOptions = {
   context: string;
   fallback: string;
+  unauthorizedMessage?: string;
 };
 
 type ApiErrorBody = {
@@ -51,7 +52,7 @@ function getStatusFallback(status: number, fallback: string) {
 
 export async function createApiError(
   response: Response,
-  { context, fallback }: ApiErrorOptions,
+  { context, fallback, unauthorizedMessage }: ApiErrorOptions,
 ) {
   let body: ApiErrorBody | null = null;
   let rawBody: string | null = null;
@@ -80,11 +81,13 @@ export async function createApiError(
     // Em 5xx, o body pode citar banco, infraestrutura, bibliotecas ou stack.
     // Usamos somente o fallback público definido pela operação. Em outros
     // status, preservamos validações de negócio e usamos fallback se faltarem.
-    response.status >= 500
-      ? fallback
-      : !technicalMessage && apiMessage
-        ? apiMessage
-        : getStatusFallback(response.status, fallback);
+    response.status === 401 && unauthorizedMessage
+      ? unauthorizedMessage
+      : response.status >= 500
+        ? fallback
+        : !technicalMessage && apiMessage
+          ? apiMessage
+          : getStatusFallback(response.status, fallback);
 
   // O diagnóstico técnico fica no servidor e contém apenas contexto/status.
   // Não registramos o body financeiro, headers, cookies ou tokens da chamada.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { FormInput } from "@/components/form/form-input";
@@ -15,13 +15,17 @@ import { Loader } from "lucide-react";
 
 export default function RegisterPage() {
   const {
-    register,
+    control,
     handleSubmit,
-    formState: { errors },
+    setError,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(RegisterSchema),
+    // Controller mantém value/onChange no React Hook Form, sem estado duplicado.
+    // O resolver Zod atualiza as mensagens a cada edição e bloqueia o envio inválido.
+    defaultValues: { name: "", email: "", password: "", confirmPassword: "" },
+    mode: "onChange",
   });
-  const { createUser, isLoading, error } = useCreateUser();
+  const { createUser, isLoading, error } = useCreateUser(setError);
 
   const onSubmit = (formData: RegisterFormData) => {
     const { confirmPassword, ...dataToSend } = formData;
@@ -33,29 +37,57 @@ export default function RegisterPage() {
     <div className="flex w-full flex-1 items-center justify-center">
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-md dark:bg-[#1F2937]">
         <h2 className="mb-6 text-2xl font-bold text-[#1F2937] dark:text-white">
-          Criar Conta
+          Criar conta
         </h2>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <FormInput
-            label="Nome"
-            register={register("name")}
-            error={errors.name?.message}
+        <form noValidate onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <Controller
+            name="name"
+            control={control}
+            render={({ field, fieldState }) => (
+              <FormInput
+                label="Nome"
+                {...field}
+                error={fieldState.error?.message}
+                autoComplete="name"
+              />
+            )}
           />
-          <FormInput
-            label="E-mail"
-            type="email"
-            register={register("email")}
-            error={errors.email?.message}
+          <Controller
+            name="email"
+            control={control}
+            render={({ field, fieldState }) => (
+              <FormInput
+                label="E-mail"
+                type="email"
+                {...field}
+                error={fieldState.error?.message}
+                autoComplete="email"
+              />
+            )}
           />
-          <PasswordInput
-            label="Senha"
-            register={register("password")}
-            error={errors.password?.message}
+          <Controller
+            name="password"
+            control={control}
+            render={({ field, fieldState }) => (
+              <PasswordInput
+                label="Senha"
+                {...field}
+                error={fieldState.error?.message}
+                autoComplete="new-password"
+              />
+            )}
           />
-          <PasswordInput
-            label="Confirme sua senha"
-            register={register("confirmPassword")}
-            error={errors.confirmPassword?.message}
+          <Controller
+            name="confirmPassword"
+            control={control}
+            render={({ field, fieldState }) => (
+              <PasswordInput
+                label="Confirme sua senha"
+                {...field}
+                error={fieldState.error?.message}
+                autoComplete="new-password"
+              />
+            )}
           />
           <Button
             type="submit"

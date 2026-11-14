@@ -42,7 +42,9 @@ não garante disponibilidade quando o MongoDB ou o serviço Nest falham.
 
 ### `POST /auth`
 
-Faz login e retorna o token JWT.
+Faz login e retorna o token JWT. E-mail válido e senha de 8 a 128 caracteres.
+`400` indica validação; `401` indica credenciais inválidas (sem distinguir conta
+inexistente de senha incorreta); `5xx` recebe mensagem segura de indisponibilidade.
 
 Entrada:
 
@@ -67,7 +69,11 @@ Resposta:
 
 ### `POST /user`
 
-Cria um usuário.
+Cria um usuário. Nome de 3 a 50 caracteres, e-mail válido e senha de 8 a 128
+caracteres. `400` retorna mensagens de validação em `message` (array); `409`
+retorna `message: "E-mail já cadastrado"`; `5xx` recebe fallback público no front.
+O formulário e a Server Action validam esses limites antes do POST.
+Veja a [política de feedback](error-feedback.md).
 
 Entrada:
 

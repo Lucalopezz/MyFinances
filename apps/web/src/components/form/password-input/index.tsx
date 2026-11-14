@@ -4,16 +4,18 @@ import React, { useId, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { UseFormRegisterReturn } from "react-hook-form";
 
-interface PasswordInputProps {
+interface PasswordInputProps extends Omit<React.ComponentProps<"input">, "id" | "type"> {
   label: string;
   error?: string;
-  register: UseFormRegisterReturn;
+  register?: UseFormRegisterReturn;
 }
 
+// A visibilidade é local; o valor pode ser controlado pelo formulário via props.
 export const PasswordInput = ({
   label,
   error,
   register,
+  ...inputProps
 }: PasswordInputProps) => {
   const [showPassword, setShowPassword] = useState(false);
   // Senha e confirmação precisam de identidades próprias e rótulos navegáveis.
@@ -28,12 +30,13 @@ export const PasswordInput = ({
         {label}
       </label>
       <input
+        {...register}
+        {...inputProps}
         id={id}
         aria-invalid={Boolean(error)}
         aria-describedby={error ? `${id}-error` : undefined}
         type={showPassword ? "text" : "password"}
         className="w-full p-2 border rounded dark:bg-gray-800 dark:text-white pr-10"
-        {...register}
       />
       <button
         type="button"
